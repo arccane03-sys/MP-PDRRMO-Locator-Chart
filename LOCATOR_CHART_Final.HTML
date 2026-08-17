@@ -1,0 +1,600 @@
+HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Staff Locator Board - Mountain Province PDRRMO</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            padding: 0.8vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('logo.jpg'); 
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover;
+            opacity: 0.22;
+            z-index: 0;
+            pointer-events: none;
+            filter: brightness(0.8) contrast(1.1);
+        }
+
+        header {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 55px;
+            margin-bottom: 6px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 0 10px 5px 10px;
+            background-color: rgba(18, 18, 18, 0.88);
+            backdrop-filter: blur(6px);
+        }
+
+        .header-title-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #f0f0f0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        }
+
+        .clock-display {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #4fc3f7;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .stats-summary {
+            display: flex;
+            gap: 10px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .stat-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-badge.in { background-color: rgba(46, 125, 50, 0.9); }
+        .stat-badge.out { background-color: rgba(198, 40, 40, 0.9); }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .actions button, .actions label {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.2s ease;
+        }
+
+        .actions button.fullscreen-btn { background-color: #9C27B0; }
+        .actions button.export-btn { background-color: #4CAF50; }
+        .actions label.import-btn { background-color: #FF9800; }
+        .actions button:hover, .actions label:hover { opacity: 0.9; }
+
+        #fileInput { display: none; }
+
+        #saveNotice {
+            position: fixed;
+            bottom: 12px;
+            right: 12px;
+            background-color: rgba(76, 175, 80, 0.95);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+
+        .board-container {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            height: calc(100vh - 75px);
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            table-layout: fixed;
+        }
+
+        th {
+            background-color: rgba(18, 18, 18, 0.92);
+            color: #4fc3f7;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            padding: 6px 8px;
+            border-bottom: 2px solid #333;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+        }
+
+        td {
+            padding: 2px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            background-color: rgba(18, 18, 18, 0.6);
+            vertical-align: middle;
+            height: calc((100vh - 120px) / 17);
+        }
+
+        .name-cell {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid #777;
+            border-radius: 50%;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: transparent;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            outline: none;
+            text-overflow: ellipsis;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+        }
+
+        input[type="text"]:focus {
+            border-bottom: 1px solid #2196F3;
+        }
+
+        .custom-note-input {
+            background: rgba(30, 30, 30, 0.95) !important;
+            color: #ffffff;
+            border: 1px solid #2196F3 !important;
+            border-radius: 4px;
+            padding: 2px 6px !important;
+            font-size: 0.85rem !important;
+            text-transform: uppercase;
+        }
+
+        input::placeholder {
+            color: #777 !important;
+            font-weight: normal;
+        }
+
+        select {
+            width: 100%;
+            padding: 3px 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-radius: 4px;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            appearance: none;
+            -webkit-appearance: none;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }
+
+        select.status-in {
+            background-color: rgba(46, 125, 50, 0.95);
+            color: #ffffff;
+        }
+
+        select.status-out {
+            background-color: rgba(198, 40, 40, 0.95);
+            color: #ffffff;
+        }
+
+        select.type-select {
+            background-color: rgba(30, 30, 30, 0.95);
+            color: #ffffff;
+            border: 1px solid #555;
+        }
+
+        select option {
+            background-color: #111111;
+            color: #ffffff;
+            font-size: 0.85rem;
+        }
+
+        .delete-row {
+            color: #888;
+            cursor: pointer;
+            font-size: 1.1rem;
+            text-align: center;
+            width: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+            transition: color 0.2s ease;
+        }
+
+        .delete-row:hover {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title-container">
+            <h1>Mountain Province PDRRMO - Staff Locator Board</h1>
+            <div class="clock-display" id="liveClock">--:--:-- --</div>
+        </div>
+        <div class="stats-summary">
+            <span class="stat-badge in" id="countIn">IN: 0</span>
+            <span class="stat-badge out" id="countOut">OUT: 0</span>
+        </div>
+        <div class="actions">
+            <button class="fullscreen-btn" onclick="toggleFullScreen()">🖥️ Full Screen</button>
+            <button onclick="addRow()">+ Add Person</button>
+            <button class="export-btn" onclick="exportData()">💾 Save File</button>
+            <label class="import-btn">
+                📂 Load File
+                <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
+            </label>
+        </div>
+    </header>
+
+    <div class="board-container">
+        <div class="column">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 38%;">Name</th>
+                        <th style="width: 22%;">Status</th>
+                        <th style="width: 35%;">Note / Location</th>
+                        <th style="width: 5%;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBodyCol1"></tbody>
+            </table>
+        </div>
+
+        <div class="column">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 38%;">Name</th>
+                        <th style="width: 22%;">Status</th>
+                        <th style="width: 35%;">Note / Location</th>
+                        <th style="width: 5%;"></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBodyCol2"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="saveNotice">✓ Synced Live</div>
+
+    <!-- Firebase SDKs (Compat versions for direct browser usage) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Your exact Firebase project config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDRbm7ZYauaZ8TAcn5N8Y98KDA0fe_mlF0",
+            authDomain: "mp-pdrrmo-locator-chart.firebaseapp.com",
+            databaseURL: "https://mp-pdrrmo-locator-chart-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "mp-pdrrmo-locator-chart",
+            storageBucket: "mp-pdrrmo-locator-chart.firebasestorage.app",
+            messagingSenderId: "812039058559",
+            appId: "1:812039058559:web:442cba25e55a9aa11d3b4a"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const locatorRef = db.ref("locatorBoard");
+
+        let locatorData = [];
+        let activeCustomInputIndex = null;
+
+        const generateDefaultData = () => {
+            const arr = [
+                { name: "John Doe", status: "IN", note: "", color: "#ffffff" },
+                { name: "Jane Smith", status: "OUT", note: "ON LEAVE", color: "#ffb74d" },
+                { name: "Alex Rivera", status: "OUT", note: "ON BUSINESS", color: "#64b5f6" },
+                { name: "Maria Cruz", status: "OUT", note: "ON FIELD", color: "#81c784" }
+            ];
+            while (arr.length < 34) {
+                arr.push({ name: "", status: "IN", note: "", color: "#ffffff" });
+            }
+            return arr;
+        };
+
+        // Real-Time Database Listener: Synchronizes TV and mobile displays automatically
+        locatorRef.on("value", (snapshot) => {
+            const val = snapshot.val();
+            if (val && Array.isArray(val)) {
+                locatorData = val;
+            } else {
+                locatorData = generateDefaultData();
+                saveData();
+            }
+            renderTable();
+        });
+
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('liveClock').innerText = `${dateStr} | ${timeStr}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function updateCounters() {
+            let inCount = 0;
+            let outCount = 0;
+            locatorData.forEach(item => {
+                if (item.name.trim() !== "") {
+                    if (item.status === "IN") inCount++;
+                    else if (item.status === "OUT") outCount++;
+                }
+            });
+            document.getElementById("countIn").innerText = `IN: ${inCount}`;
+            document.getElementById("countOut").innerText = `OUT: ${outCount}`;
+        }
+
+        function renderTable() {
+            const col1 = document.getElementById("tableBodyCol1");
+            const col2 = document.getElementById("tableBodyCol2");
+            col1.innerHTML = "";
+            col2.innerHTML = "";
+
+            locatorData.forEach((item, index) => {
+                const tr = document.createElement("tr");
+                const statusClass = item.status === "IN" ? "status-in" : "status-out";
+                const nameColor = item.color || "#ffffff";
+                const isFixedOption = ["", "ON LEAVE", "ON BUSINESS", "ON FIELD"].includes(item.note);
+
+                let noteCellHTML = "";
+                if (activeCustomInputIndex === index) {
+                    noteCellHTML = `<input type="text" class="custom-note-input" value="${escapeHtml(item.note)}" 
+                        placeholder="Type location..." 
+                        onblur="saveCustomNote(${index}, this.value)" 
+                        onkeydown="handleCustomNoteKey(event, ${index}, this.value)" autofocus>`;
+                } else {
+                    noteCellHTML = `
+                        <select class="type-select" onchange="handleNoteChange(${index}, this)">
+                            <option value="" ${item.note === "" ? "selected" : ""}>-- SELECT --</option>
+                            <option value="ON LEAVE" ${item.note === "ON LEAVE" ? "selected" : ""}>ON LEAVE</option>
+                            <option value="ON BUSINESS" ${item.note === "ON BUSINESS" ? "selected" : ""}>ON BUSINESS</option>
+                            <option value="ON FIELD" ${item.note === "ON FIELD" ? "selected" : ""}>ON FIELD</option>
+                            ${!isFixedOption ? `<option value="${escapeHtml(item.note)}" selected>${escapeHtml(item.note)}</option>` : ""}
+                            <option value="__CUSTOM__">+ EDIT / OTHER...</option>
+                        </select>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="name-cell">
+                            <input type="color" value="${nameColor}" title="Change Name Color" onchange="updateNameColor(${index}, this.value)">
+                            <input type="text" value="${escapeHtml(item.name)}" placeholder="Enter Name" style="color: ${nameColor};" onchange="updateData(${index}, 'name', this.value)">
+                        </div>
+                    </td>
+                    <td>
+                        <select class="${statusClass}" onchange="updateStatus(${index}, this)">
+                            <option value="IN" ${item.status === "IN" ? "selected" : ""}>IN</option>
+                            <option value="OUT" ${item.status === "OUT" ? "selected" : ""}>OUT</option>
+                        </select>
+                    </td>
+                    <td>${noteCellHTML}</td>
+                    <td class="delete-row" onclick="removeRow(${index})" title="Remove Row">&times;</td>
+                `;
+
+                if (index < 17) {
+                    col1.appendChild(tr);
+                } else if (index < 34) {
+                    col2.appendChild(tr);
+                }
+            });
+
+            updateCounters();
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        function updateNameColor(index, newColor) {
+            locatorData[index].color = newColor;
+            renderTable();
+            saveData();
+        }
+
+        function updateStatus(index, selectElement) {
+            const value = selectElement.value;
+            locatorData[index].status = value;
+            selectElement.className = value === "IN" ? "status-in" : "status-out";
+            updateCounters();
+            saveData();
+        }
+
+        function handleNoteChange(index, selectElement) {
+            const val = selectElement.value;
+            if (val === "__CUSTOM__") {
+                activeCustomInputIndex = index;
+                renderTable();
+            } else {
+                locatorData[index].note = val;
+                saveData();
+            }
+        }
+
+        function saveCustomNote(index, value) {
+            locatorData[index].note = value.trim().toUpperCase();
+            activeCustomInputIndex = null;
+            renderTable();
+            saveData();
+        }
+
+        function handleCustomNoteKey(event, index, value) {
+            if (event.key === "Enter") {
+                saveCustomNote(index, value);
+            }
+        }
+
+        function updateData(index, key, value) {
+            locatorData[index][key] = value;
+            updateCounters();
+            saveData();
+        }
+
+        function addRow() {
+            if (locatorData.length < 34) {
+                locatorData.push({ name: "", status: "IN", note: "", color: "#ffffff" });
+            } else {
+                alert("Maximum display capacity (34 entries) reached.");
+            }
+            renderTable();
+            saveData();
+        }
+
+        function removeRow(index) {
+            locatorData.splice(index, 1);
+            if (locatorData.length < 34) {
+                locatorData.push({ name: "", status: "IN", note: "", color: "#ffffff" });
+            }
+            renderTable();
+            saveData();
+        }
+
+        function saveData() {
+            // Push updates directly to Firebase Realtime Database
+            locatorRef.set(locatorData);
+            showSaveNotice();
+        }
+
+        function showSaveNotice() {
+            const notice = document.getElementById("saveNotice");
+            notice.style.display = "block";
+            setTimeout(() => {
+                notice.style.display = "none";
+            }, 1200);
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(locatorData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "locator_board_data.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (Array.isArray(importedData)) {
+                        locatorData = importedData;
+                        while (locatorData.length < 34) {
+                            locatorData.push({ name: "", status: "IN", note: "", color: "#ffffff" });
+                        }
+                        saveData();
+                        renderTable();
+                        alert("Locator data imported successfully!");
+                    }
+                } catch (error) {
+                    alert("Invalid JSON file format.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
