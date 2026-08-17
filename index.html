@@ -118,9 +118,19 @@ HTML
         }
 
         .actions button.fullscreen-btn { background-color: #9C27B0; }
-        .actions button.export-btn { background-color: #4CAF50; }
+        .actions button.admin-btn { background-color: #E91E63; }
+        .actions button.admin-btn.active { background-color: #4CAF50; }
+        .actions button.export-btn { background-color: #009688; }
         .actions label.import-btn { background-color: #FF9800; }
         .actions button:hover, .actions label:hover { opacity: 0.9; }
+
+        .admin-only {
+            display: none !important;
+        }
+
+        body.is-admin .admin-only {
+            display: flex !important;
+        }
 
         #fileInput { display: none; }
 
@@ -197,6 +207,11 @@ HTML
             flex-shrink: 0;
         }
 
+        input[type="color"]:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch {
             border: 1px solid #777;
@@ -212,6 +227,10 @@ HTML
             outline: none;
             text-overflow: ellipsis;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+        }
+
+        input[type="text"]:disabled {
+            color: inherit;
         }
 
         input[type="text"]:focus {
@@ -247,6 +266,11 @@ HTML
             -webkit-appearance: none;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+        }
+
+        select:disabled {
+            cursor: not-allowed;
+            opacity: 0.85;
         }
 
         select.status-in {
@@ -298,10 +322,11 @@ HTML
             <span class="stat-badge out" id="countOut">OUT: 0</span>
         </div>
         <div class="actions">
+            <button class="admin-btn" id="adminToggleBtn" onclick="toggleAdminMode()">🔒 Lock (View Only)</button>
             <button class="fullscreen-btn" onclick="toggleFullScreen()">🖥️ Full Screen</button>
-            <button onclick="addRow()">+ Add Person</button>
-            <button class="export-btn" onclick="exportData()">💾 Save File</button>
-            <label class="import-btn">
+            <button class="admin-only" onclick="addRow()">+ Add Person</button>
+            <button class="export-btn admin-only" onclick="exportData()">💾 Save File</button>
+            <label class="import-btn admin-only">
                 📂 Load File
                 <input type="file" id="fileInput" accept=".json" onchange="importData(event)">
             </label>
@@ -340,12 +365,16 @@ HTML
 
     <div id="saveNotice">✓ Synced Live</div>
 
-    <!-- Firebase SDKs (Compat versions for direct browser usage) -->
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        // Your exact Firebase project config
+        // --- ADMIN PASSCODE CONFIGURATION ---
+        const ADMIN_PIN = "1234"; // CHANGE THIS TO YOUR DESIRED PASSCODE
+        let isAdminMode = false;
+
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDRbm7ZYauaZ8TAcn5N8Y98KDA0fe_mlF0",
             authDomain: "mp-pdrrmo-locator-chart.firebaseapp.com",
@@ -356,7 +385,6 @@ HTML
             appId: "1:812039058559:web:442cba25e55a9aa11d3b4a"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const locatorRef = db.ref("locatorBoard");
@@ -377,17 +405,39 @@ HTML
             return arr;
         };
 
-        // Real-Time Database Listener: Synchronizes TV and mobile displays automatically
         locatorRef.on("value", (snapshot) => {
             const val = snapshot.val();
             if (val && Array.isArray(val)) {
                 locatorData = val;
             } else {
                 locatorData = generateDefaultData();
-                saveData();
+                if (isAdminMode) saveData();
             }
             renderTable();
         });
+
+        function toggleAdminMode() {
+            if (!isAdminMode) {
+                const inputPin = prompt("Enter Admin Passcode to enable editing:");
+                if (inputPin === ADMIN_PIN) {
+                    isAdminMode = true;
+                    document.body.classList.add("is-admin");
+                    const btn = document.getElementById("adminToggleBtn");
+                    btn.innerText = "🔓 Unlock (Editing Enabled)";
+                    btn.classList.add("active");
+                    renderTable();
+                } else if (inputPin !== null) {
+                    alert("Incorrect passcode!");
+                }
+            } else {
+                isAdminMode = false;
+                document.body.classList.remove("is-admin");
+                const btn = document.getElementById("adminToggleBtn");
+                btn.innerText = "🔒 Lock (View Only)";
+                btn.classList.remove("active");
+                renderTable();
+            }
+        }
 
         function updateClock() {
             const now = new Date();
@@ -417,6 +467,8 @@ HTML
             col1.innerHTML = "";
             col2.innerHTML = "";
 
+            const disabledAttr = isAdminMode ? "" : "disabled";
+
             locatorData.forEach((item, index) => {
                 const tr = document.createElement("tr");
                 const statusClass = item.status === "IN" ? "status-in" : "status-out";
@@ -424,20 +476,20 @@ HTML
                 const isFixedOption = ["", "ON LEAVE", "ON BUSINESS", "ON FIELD"].includes(item.note);
 
                 let noteCellHTML = "";
-                if (activeCustomInputIndex === index) {
+                if (activeCustomInputIndex === index && isAdminMode) {
                     noteCellHTML = `<input type="text" class="custom-note-input" value="${escapeHtml(item.note)}" 
                         placeholder="Type location..." 
                         onblur="saveCustomNote(${index}, this.value)" 
                         onkeydown="handleCustomNoteKey(event, ${index}, this.value)" autofocus>`;
                 } else {
                     noteCellHTML = `
-                        <select class="type-select" onchange="handleNoteChange(${index}, this)">
+                        <select class="type-select" ${disabledAttr} onchange="handleNoteChange(${index}, this)">
                             <option value="" ${item.note === "" ? "selected" : ""}>-- SELECT --</option>
                             <option value="ON LEAVE" ${item.note === "ON LEAVE" ? "selected" : ""}>ON LEAVE</option>
                             <option value="ON BUSINESS" ${item.note === "ON BUSINESS" ? "selected" : ""}>ON BUSINESS</option>
                             <option value="ON FIELD" ${item.note === "ON FIELD" ? "selected" : ""}>ON FIELD</option>
                             ${!isFixedOption ? `<option value="${escapeHtml(item.note)}" selected>${escapeHtml(item.note)}</option>` : ""}
-                            <option value="__CUSTOM__">+ EDIT / OTHER...</option>
+                            ${isAdminMode ? '<option value="__CUSTOM__">+ EDIT / OTHER...</option>' : ''}
                         </select>
                     `;
                 }
@@ -445,18 +497,18 @@ HTML
                 tr.innerHTML = `
                     <td>
                         <div class="name-cell">
-                            <input type="color" value="${nameColor}" title="Change Name Color" onchange="updateNameColor(${index}, this.value)">
-                            <input type="text" value="${escapeHtml(item.name)}" placeholder="Enter Name" style="color: ${nameColor};" onchange="updateData(${index}, 'name', this.value)">
+                            <input type="color" value="${nameColor}" ${disabledAttr} title="Change Name Color" onchange="updateNameColor(${index}, this.value)">
+                            <input type="text" value="${escapeHtml(item.name)}" ${disabledAttr} placeholder="Enter Name" style="color: ${nameColor};" onchange="updateData(${index}, 'name', this.value)">
                         </div>
                     </td>
                     <td>
-                        <select class="${statusClass}" onchange="updateStatus(${index}, this)">
+                        <select class="${statusClass}" ${disabledAttr} onchange="updateStatus(${index}, this)">
                             <option value="IN" ${item.status === "IN" ? "selected" : ""}>IN</option>
                             <option value="OUT" ${item.status === "OUT" ? "selected" : ""}>OUT</option>
                         </select>
                     </td>
                     <td>${noteCellHTML}</td>
-                    <td class="delete-row" onclick="removeRow(${index})" title="Remove Row">&times;</td>
+                    <td class="delete-row ${isAdminMode ? '' : 'admin-only'}" onclick="removeRow(${index})" title="Remove Row">&times;</td>
                 `;
 
                 if (index < 17) {
@@ -482,12 +534,14 @@ HTML
         }
 
         function updateNameColor(index, newColor) {
+            if (!isAdminMode) return;
             locatorData[index].color = newColor;
             renderTable();
             saveData();
         }
 
         function updateStatus(index, selectElement) {
+            if (!isAdminMode) return;
             const value = selectElement.value;
             locatorData[index].status = value;
             selectElement.className = value === "IN" ? "status-in" : "status-out";
@@ -496,6 +550,7 @@ HTML
         }
 
         function handleNoteChange(index, selectElement) {
+            if (!isAdminMode) return;
             const val = selectElement.value;
             if (val === "__CUSTOM__") {
                 activeCustomInputIndex = index;
@@ -507,6 +562,7 @@ HTML
         }
 
         function saveCustomNote(index, value) {
+            if (!isAdminMode) return;
             locatorData[index].note = value.trim().toUpperCase();
             activeCustomInputIndex = null;
             renderTable();
@@ -520,12 +576,14 @@ HTML
         }
 
         function updateData(index, key, value) {
+            if (!isAdminMode) return;
             locatorData[index][key] = value;
             updateCounters();
             saveData();
         }
 
         function addRow() {
+            if (!isAdminMode) return;
             if (locatorData.length < 34) {
                 locatorData.push({ name: "", status: "IN", note: "", color: "#ffffff" });
             } else {
@@ -536,6 +594,7 @@ HTML
         }
 
         function removeRow(index) {
+            if (!isAdminMode) return;
             locatorData.splice(index, 1);
             if (locatorData.length < 34) {
                 locatorData.push({ name: "", status: "IN", note: "", color: "#ffffff" });
@@ -545,7 +604,7 @@ HTML
         }
 
         function saveData() {
-            // Push updates directly to Firebase Realtime Database
+            if (!isAdminMode) return;
             locatorRef.set(locatorData);
             showSaveNotice();
         }
@@ -569,6 +628,7 @@ HTML
         }
 
         function importData(event) {
+            if (!isAdminMode) return;
             const file = event.target.files[0];
             if (!file) return;
 
