@@ -294,6 +294,36 @@
             font-size: 0.8rem;
         }
 
+        /* --- NOTE / LOCATION COLOR STYLES --- */
+        select.type-select.note-leave {
+            background-color: #e65100 !important;
+            color: #ffffff !important;
+            border: 1px solid #ff9800 !important;
+        }
+        select.type-select.note-business {
+            background-color: #0277bd !important;
+            color: #ffffff !important;
+            border: 1px solid #03a9f4 !important;
+        }
+        select.type-select.note-field {
+            background-color: #2e7d32 !important;
+            color: #ffffff !important;
+            border: 1px solid #4caf50 !important;
+        }
+
+        select option.opt-leave {
+            background-color: #e65100;
+            color: #ffffff;
+        }
+        select option.opt-business {
+            background-color: #0277bd;
+            color: #ffffff;
+        }
+        select option.opt-field {
+            background-color: #2e7d32;
+            color: #ffffff;
+        }
+
         .delete-row {
             color: #888;
             cursor: pointer;
@@ -477,6 +507,11 @@
                 const nameColor = item.color || "#ffffff";
                 const isFixedOption = ["", "ON LEAVE", "ON BUSINESS", "ON FIELD"].includes(item.note);
 
+                let noteClass = "";
+                if (item.note === "ON LEAVE") noteClass = "note-leave";
+                else if (item.note === "ON BUSINESS") noteClass = "note-business";
+                else if (item.note === "ON FIELD") noteClass = "note-field";
+
                 let noteCellHTML = "";
                 if (activeCustomInputIndex === index && isAdminMode) {
                     noteCellHTML = `<input type="text" class="custom-note-input" value="${escapeHtml(item.note)}" 
@@ -485,11 +520,11 @@
                         onkeydown="handleCustomNoteKey(event, ${index}, this.value)" autofocus>`;
                 } else {
                     noteCellHTML = `
-                        <select class="type-select" ${disabledAttr} onchange="handleNoteChange(${index}, this)">
+                        <select class="type-select ${noteClass}" ${disabledAttr} onchange="handleNoteChange(${index}, this)">
                             <option value="" ${item.note === "" ? "selected" : ""}>-- SELECT --</option>
-                            <option value="ON LEAVE" ${item.note === "ON LEAVE" ? "selected" : ""}>ON LEAVE</option>
-                            <option value="ON BUSINESS" ${item.note === "ON BUSINESS" ? "selected" : ""}>ON BUSINESS</option>
-                            <option value="ON FIELD" ${item.note === "ON FIELD" ? "selected" : ""}>ON FIELD</option>
+                            <option value="ON LEAVE" class="opt-leave" ${item.note === "ON LEAVE" ? "selected" : ""}>ON LEAVE</option>
+                            <option value="ON BUSINESS" class="opt-business" ${item.note === "ON BUSINESS" ? "selected" : ""}>ON BUSINESS</option>
+                            <option value="ON FIELD" class="opt-field" ${item.note === "ON FIELD" ? "selected" : ""}>ON FIELD</option>
                             ${!isFixedOption ? `<option value="${escapeHtml(item.note)}" selected>${escapeHtml(item.note)}</option>` : ""}
                             ${isAdminMode ? '<option value="__CUSTOM__">+ EDIT / OTHER...</option>' : ''}
                         </select>
@@ -559,6 +594,7 @@
                 renderTable();
             } else {
                 locatorData[index].note = val;
+                renderTable();
                 saveData();
             }
         }
